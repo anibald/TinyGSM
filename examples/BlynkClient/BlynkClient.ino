@@ -54,6 +54,12 @@ const char pass[] = "";
 //#include <SoftwareSerial.h>
 //SoftwareSerial SerialAT(2, 3); // RX, TX
 
+// Another solution fot serial communication on Uno, Nano, etc. 
+// SoftwareSerial might be unstable on lower (9600) or higher (115200) baud rates
+// Try it if you are experiencing connection instability
+//#include <AltSoftSerial.h>
+//AltSoftSerial SerialAT; // (8, 9); // RX, TX
+
 TinyGsm modem(SerialAT);
 
 void setup()
@@ -69,16 +75,30 @@ void setup()
   // Restart takes quite some time
   // To skip it, call init() instead of restart()
   Serial.println("Initializing modem...");
-  modem.restart();
+  modem.restart(); // initializes the modem 
 
   // Unlock your SIM card with a PIN
   //modem.simUnlock("1234");
 
-  Blynk.begin(auth, modem, apn, user, pass);
+  Blynk.begin(auth, modem, apn, user, pass); // attempt a new login on Blynk
 }
 
 void loop()
 {
-  Blynk.run();
+    // Sometimes, due to network problems, Blynk might get caught on a loop
+    // trying to reconnect. To avoid it waitForNetwork() will check
+    // if everything is fine with the network, if it's not, modem will be
+    // restarted.
+     
+    if (!modem.waitForNetwork()) { // Check network status
+      Serial.println("Network is gone... ");
+      modem.restart();  
+      Blynk.begin(auth, modem, apn, user, pass); 
+      Serial.println("Modem was restarted and reconfigured... ");
+
+    }
+    else {
+      Blynk.run(); // runs Blynk normal routine
+    }
 }
 
